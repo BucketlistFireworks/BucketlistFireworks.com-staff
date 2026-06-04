@@ -408,7 +408,10 @@ function buildShow() {
 
   function tryAdd(p) {
     if (!p) return false;
-    for (var i = 0; i < show.length; i++) { if (show[i].name === p.name) return false; }
+    // No repeats unless budget > $750
+    if (budget <= 750) {
+      for (var i = 0; i < show.length; i++) { if (show[i].name === p.name) return false; }
+    }
     var px = priceNum(p);
     if (spent + px <= budget * 1.05 + 30) {
       show.push(p); spent += px; totalSecs += p.duration; return true;
