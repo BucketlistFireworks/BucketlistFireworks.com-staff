@@ -762,6 +762,80 @@ function buildShow() {
   document.getElementById("show-results").innerHTML = out;
   updateBudgetSummary();
 }
+
+// ── Tab wiring ──────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.nav-tab[data-tab]').forEach(function(t){ t.classList.remove('active'); });
+  var screen = document.getElementById('screen-' + id);
+  var tab    = document.getElementById('tab-' + id);
+  if (screen) screen.classList.add('active');
+  if (tab)    tab.classList.add('active');
+  if (id === 'lookup') renderLookup();
+}
+
+document.querySelectorAll('.nav-tab[data-tab]').forEach(function(t) {
+  t.addEventListener('click', function(){ showTab(this.getAttribute('data-tab')); });
+});
+
+// ── Product lookup ───────────────────────────────────────
+var activeCat = 'All';
+
+function buildCatChips() {
+  var cats = ['All'];
+  PRODUCTS.forEach(function(p){ if (cats.indexOf(p.cat) < 0) cats.push(p.cat); });
+  cats = ['All'].concat(cats.filter(function(c){ return c !== 'All'; }).sort());
+  document.getElementById('cat-filters').innerHTML = cats.map(function(c){
+    return '<div class="chip' + (c === 'All' ? ' active' : '') + '" data-cat="' + c + '">' + c + '</div>';
+  }).join('');
+  document.getElementById('cat-filters').querySelectorAll('.chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      activeCat = this.getAttribute('data-cat');
+      document.getElementById('cat-filters').querySelectorAll('.chip').forEach(function(c){ c.classList.remove('active'); });
+      this.classList.add('active');
+      renderLookup();
+    });
+  });
+}
+
+function renderLookup() {
+  var q = (document.getElementById('lu-search').value || '').toLowerCase();
+  var list = PRODUCTS.filter(function(p) {
+    if (activeCat !== 'All' && p.cat !== activeCat) return false;
+    if (q && p.name.toLowerCase().indexOf(q) < 0 && p.effects.join(' ').toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+  document.getElementById('lu-list').innerHTML = list.length ? list.map(function(p){
+    var html = "<div class='result-card' style='margin-bottom:10px'>";
+    html += "<div class='rc-top'><span class='rc-name'>" + p.name + "</span>";
+    html += "<span style='font-family:Barlow Condensed;font-size:13px;color:var(--gold);white-space:nowrap'>" + p.price + "</span></div>";
+    html += "<div style='font-size:12px;color:var(--text2);margin-top:2px'>" + p.cat + " | " + p.effects.join(', ') + "</div>";
+    if (p.desc)  html += "<div style='font-size:12px;color:var(--text3);margin-top:3px'>" + p.desc + "</div>";
+    if (p.pitch) html += "<div style='font-size:12px;color:var(--gold);margin-top:3px;font-style:italic'>" + p.pitch + "</div>";
+    if (p.video) html += "<a href='" + p.video + "' target='_blank' style='display:inline-block;margin-top:5px;font-size:12px;color:var(--gold)'>&#9654; Watch Demo</a>";
+    html += "</div>";
+    return html;
+  }).join('') : "<div style='color:var(--text3);font-size:13px;padding:20px 0;text-align:center'>No products found.</div>";
+}
+
+// ── fx chips (show builder effects filter) ───────────────
+function buildFxChips() {
+  var fxSet = {};
+  PRODUCTS.forEach(function(p){
+    if (['500g Cake','Multi-Tube','Reloadable','Fountain'].indexOf(p.cat) < 0) return;
+    p.effects.forEach(function(e){ fxSet[e] = true; });
+  });
+  document.getElementById('fx-chips').innerHTML = Object.keys(fxSet).sort().map(function(f){
+    return '<div class="chip" data-fx="' + f + '">' + f + '</div>';
+  }).join('');
+  document.getElementById('fx-chips').querySelectorAll('.chip').forEach(function(chip){
+    chip.addEventListener('click', function(){ toggleFx(this, this.getAttribute('data-fx')); });
+  });
+}
+
+// ── Init ─────────────────────────────────────────────────
+buildCatChips();
+renderLookup();
 </script>
 </body>
 </html>
