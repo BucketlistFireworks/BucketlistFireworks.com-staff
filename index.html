@@ -176,6 +176,34 @@ input[type=range]{width:100%;accent-color:var(--red);margin-bottom:4px;cursor:po
       <div class="chip" id="color-neon" onclick="setColor('neon')">Neon</div>
     </div>
 
+    <!-- STEP 6: BURST SHAPE -->
+    <div class="slabel" style="margin-top:18px">Burst shape</div>
+    <div class="chip-wrap" id="shape-chips">
+      <div class="chip active" id="shape-any" onclick="setShape('any')">Any</div>
+      <div class="chip" id="shape-peony" onclick="setShape('peony')">Peony</div>
+      <div class="chip" id="shape-willow" onclick="setShape('willow')">Willow / Palm</div>
+      <div class="chip" id="shape-crackle" onclick="setShape('crackle')">Crackle</div>
+      <div class="chip" id="shape-strobe" onclick="setShape('strobe')">Strobe</div>
+      <div class="chip" id="shape-mine" onclick="setShape('mine')">Mine / Fan</div>
+    </div>
+
+    <!-- STEP 7: SHOOT PATTERN -->
+    <div class="slabel" style="margin-top:18px">Shoot pattern</div>
+    <div class="chip-wrap" id="pattern-chips">
+      <div class="chip active" id="pattern-any" onclick="setPattern('any')">Any</div>
+      <div class="chip" id="pattern-straight" onclick="setPattern('straight')">Straight up</div>
+      <div class="chip" id="pattern-fan" onclick="setPattern('fan')">Fan spread</div>
+    </div>
+
+    <!-- STEP 8: BREAK SIZE -->
+    <div class="slabel" style="margin-top:18px">Break size</div>
+    <div class="chip-wrap" id="size-chips">
+      <div class="chip active" id="size-any" onclick="setSize('any')">Any</div>
+      <div class="chip" id="size-small" onclick="setSize('small')">Small (1–2)</div>
+      <div class="chip" id="size-medium" onclick="setSize('medium')">Medium (3)</div>
+      <div class="chip" id="size-large" onclick="setSize('large')">Large (4–5)</div>
+    </div>
+
     <button class="build-btn" onclick="buildShow()">Build Their Show</button>
     <div id="show-results" style="margin-top:16px"></div>
   </div>
@@ -391,6 +419,30 @@ var selDur = null;
 var selSaturn = 'no';
 var selNoise = 'any';
 var selColor = 'any';
+var selShape = 'any';
+var selPattern = 'any';
+var selSize = 'any';
+
+function setShape(val) {
+  selShape = val;
+  ['any','peony','willow','crackle','strobe','mine'].forEach(function(v) {
+    document.getElementById('shape-' + v).classList.toggle('active', v === val);
+  });
+}
+
+function setPattern(val) {
+  selPattern = val;
+  ['any','straight','fan'].forEach(function(v) {
+    document.getElementById('pattern-' + v).classList.toggle('active', v === val);
+  });
+}
+
+function setSize(val) {
+  selSize = val;
+  ['any','small','medium','large'].forEach(function(v) {
+    document.getElementById('size-' + v).classList.toggle('active', v === val);
+  });
+}
 
 function setSaturn(val) {
   selSaturn = val;
@@ -509,6 +561,7 @@ function buildShow() {
   var allowSaturn = selSaturn === "yes";
   var noiseFilter = selNoise || "any";
   var colorFilter = selColor || "any";
+  // selShape, selPattern, selSize used directly from global scope
 
   function noiseOk(p) {
     if (noiseFilter === "any") return true;
@@ -529,6 +582,33 @@ function buildShow() {
     return true;
   }
 
+  function shapeOk(p) {
+    if (selShape === 'any') return true;
+    var fx = p.effects.join(' ').toLowerCase();
+    if (selShape === 'peony')   return fx.includes('peony') || fx.includes('chrysanthemum') || fx.includes('brocade') || fx.includes('colorful');
+    if (selShape === 'willow')  return fx.includes('willow') || fx.includes('palm') || fx.includes('cascading') || fx.includes('glitter');
+    if (selShape === 'crackle') return fx.includes('crackle');
+    if (selShape === 'strobe')  return fx.includes('strobe') || fx.includes('flare') || fx.includes('lace');
+    if (selShape === 'mine')    return fx.includes('mine') || fx.includes('fan') || fx.includes('zig-zag');
+    return true;
+  }
+
+  function patternOk(p) {
+    if (selPattern === 'any') return true;
+    var fx = p.effects.join(' ').toLowerCase();
+    if (selPattern === 'fan')      return fx.includes('fan');
+    if (selPattern === 'straight') return !fx.includes('fan');
+    return true;
+  }
+
+  function sizeOk(p) {
+    if (selSize === 'any') return true;
+    if (selSize === 'small')  return p.stars <= 2;
+    if (selSize === 'medium') return p.stars === 3;
+    if (selSize === 'large')  return p.stars >= 4;
+    return true;
+  }
+
   function getPool(cats) {
     return PRODUCTS.filter(function(p) {
       if (!p.showBuilder) return false;
@@ -536,6 +616,9 @@ function buildShow() {
       if (p.saturn && !allowSaturn) return false;
       if (!noiseOk(p)) return false;
       if (!colorOk(p)) return false;
+      if (!shapeOk(p)) return false;
+      if (!patternOk(p)) return false;
+      if (!sizeOk(p)) return false;
       return true;
     }).sort(function(a,b){ return b.stars - a.stars; });
   }
