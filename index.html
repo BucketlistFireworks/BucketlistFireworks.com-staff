@@ -544,131 +544,113 @@ var selDur = null;
 
 function buildShow() {
   var budget = parseInt(document.getElementById("bud-slider").value, 10);
-
-  // Get category percentages
   var pctCake   = parseInt(document.getElementById("mix-cake").value, 10);
   var pctTube   = parseInt(document.getElementById("mix-tube").value, 10);
   var pctReload = parseInt(document.getElementById("mix-reload").value, 10);
-  var total = pctCake + pctTube + pctReload;
 
-  if (total !== 100) {
+  if (pctCake + pctTube + pctReload !== 100) {
     document.getElementById("mix-warning").style.display = "block";
     document.getElementById("show-results").innerHTML = "";
     return;
   }
   document.getElementById("mix-warning").style.display = "none";
 
-  var budCake   = budget * pctCake   / 100;
-  var budTube   = budget * pctTube   / 100;
-  var budReload = budget * pctReload / 100;
-
   var allowSaturn = selSaturn === "yes";
-  var noiseFilter = selNoise || "any";
-  var colorFilter = selColor || "any";
-  // selShape, selPattern, selSize used directly from global scope
 
-  function noiseOk(p) {
-    if (noiseFilter === "any") return true;
+  // --- ALL filters run first, budget is shown as guidance only ---
+  function passesFilters(p) {
+    if (!p.showBuilder) return false;
+    if (p.saturn && !allowSaturn) return false;
+
     var fx = p.effects.join(" ").toLowerCase();
-    if (noiseFilter === "quiet")    return !fx.includes("loud") && !fx.includes("crackle") && !fx.includes("whistle");
-    if (noiseFilter === "moderate") return !fx.includes("loud");
-    if (noiseFilter === "loud")     return fx.includes("loud") || fx.includes("crackle");
+
+    if (selNoise === "quiet"    && (fx.includes("loud") || fx.includes("crackle") || fx.includes("whistle"))) return false;
+    if (selNoise === "moderate" && fx.includes("loud")) return false;
+    if (selNoise === "loud"     && !fx.includes("loud") && !fx.includes("crackle")) return false;
+
+    if (selColor === "patriotic" && !fx.includes("patriotic") && !fx.includes("red") && !fx.includes("blue")) return false;
+    if (selColor === "colorful"  && !fx.includes("colorful") && !fx.includes("color")) return false;
+    if (selColor === "gold"      && !fx.includes("gold") && !fx.includes("silver") && !fx.includes("brocade") && !fx.includes("glitter")) return false;
+    if (selColor === "neon"      && !fx.includes("neon")) return false;
+
+    if (selShape === "peony"   && !fx.includes("peony") && !fx.includes("chrysanthemum") && !fx.includes("brocade")) return false;
+    if (selShape === "willow"  && !fx.includes("willow") && !fx.includes("palm") && !fx.includes("cascading") && !fx.includes("glitter")) return false;
+    if (selShape === "crackle" && !fx.includes("crackle")) return false;
+    if (selShape === "strobe"  && !fx.includes("strobe") && !fx.includes("flare")) return false;
+    if (selShape === "mine"    && !fx.includes("mine") && !fx.includes("fan")) return false;
+
+    if (selPattern === "fan"      && !fx.includes("fan")) return false;
+    if (selPattern === "straight" && fx.includes("fan")) return false;
+
+    if (selSize === "small"  && p.stars > 2) return false;
+    if (selSize === "medium" && p.stars !== 3) return false;
+    if (selSize === "large"  && p.stars < 4) return false;
+
     return true;
   }
 
-  function colorOk(p) {
-    if (colorFilter === "any") return true;
-    var fx = p.effects.join(" ").toLowerCase();
-    if (colorFilter === "patriotic") return fx.includes("patriotic") || fx.includes("red") || fx.includes("blue");
-    if (colorFilter === "colorful")  return fx.includes("colorful") || fx.includes("color");
-    if (colorFilter === "gold")      return fx.includes("gold") || fx.includes("silver") || fx.includes("brocade") || fx.includes("glitter");
-    if (colorFilter === "neon")      return fx.includes("neon");
-    return true;
-  }
-
-  function shapeOk(p) {
-    if (selShape === 'any') return true;
-    var fx = p.effects.join(' ').toLowerCase();
-    if (selShape === 'peony')   return fx.includes('peony') || fx.includes('chrysanthemum') || fx.includes('brocade') || fx.includes('colorful');
-    if (selShape === 'willow')  return fx.includes('willow') || fx.includes('palm') || fx.includes('cascading') || fx.includes('glitter');
-    if (selShape === 'crackle') return fx.includes('crackle');
-    if (selShape === 'strobe')  return fx.includes('strobe') || fx.includes('flare') || fx.includes('lace');
-    if (selShape === 'mine')    return fx.includes('mine') || fx.includes('fan') || fx.includes('zig-zag');
-    return true;
-  }
-
-  function patternOk(p) {
-    if (selPattern === 'any') return true;
-    var fx = p.effects.join(' ').toLowerCase();
-    if (selPattern === 'fan')      return fx.includes('fan');
-    if (selPattern === 'straight') return !fx.includes('fan');
-    return true;
-  }
-
-  function sizeOk(p) {
-    if (selSize === 'any') return true;
-    if (selSize === 'small')  return p.stars <= 2;
-    if (selSize === 'medium') return p.stars === 3;
-    if (selSize === 'large')  return p.stars >= 4;
-    return true;
-  }
-
-  function getPool(cats) {
-    return PRODUCTS.filter(function(p) {
-      if (!p.showBuilder) return false;
-      if (cats.indexOf(p.cat) < 0) return false;
-      if (p.saturn && !allowSaturn) return false;
-      if (!noiseOk(p)) return false;
-      if (!colorOk(p)) return false;
-      if (!shapeOk(p)) return false;
-      if (!patternOk(p)) return false;
-      if (!sizeOk(p)) return false;
-      return true;
+  // Build pools per category — sorted by stars desc
+  var catOrder = ["500g Cake", "Multi-Tube", "Reloadable", "Fountain"];
+  var pools = {};
+  for (var ci = 0; ci < catOrder.length; ci++) {
+    var cat = catOrder[ci];
+    pools[cat] = PRODUCTS.filter(function(p) {
+      return p.cat === cat && passesFilters(p);
     }).sort(function(a,b){ return b.stars - a.stars; });
   }
 
-  var cakePool   = getPool(["500g Cake"]);
-  var tubePool   = getPool(["Multi-Tube"]);
-  var reloadPool = getPool(["Reloadable"]);
+  // Budget guidance per category
+  var budgets = {
+    "500g Cake":  budget * pctCake   / 100,
+    "Multi-Tube": budget * pctTube   / 100,
+    "Reloadable": budget * pctReload / 100,
+    "Fountain":   0
+  };
 
+  // Pick products: fill each category up to its budget
+  // If a category has products but budget is too tight, still show the cheapest match
+  // Reloadables: max 3, all different
   var show = [];
   var usedNames = {};
   var saturnPicked = false;
 
-  function pick(pool, poolBudget, maxItems) {
-    var poolSpent = 0;
+  function pickCategory(cat, maxItems) {
+    var pool = pools[cat];
+    if (!pool || !pool.length) return;
+    var bud = budgets[cat];
+    var spent = 0;
     var count = 0;
+
     for (var i = 0; i < pool.length; i++) {
       if (maxItems && count >= maxItems) break;
       var p = pool[i];
       if (usedNames[p.name]) continue;
-      // Hard rule: max 1 Saturn ever
-      if (p.saturn) {
-        if (saturnPicked) continue;
-        saturnPicked = true;
-      }
+      if (p.saturn) { if (saturnPicked) continue; saturnPicked = true; }
       var px = priceNum(p);
-      if (poolSpent + px <= poolBudget * 1.08) {
+
+      // Fit within budget. For first item in category, always include cheapest if nothing fits.
+      if (px <= bud * 1.15 || (count === 0 && spent === 0)) {
         show.push(p);
         usedNames[p.name] = true;
-        poolSpent += px;
+        spent += px;
+        bud -= px;
         count++;
       }
     }
   }
 
-  // Pick for each category
-  // Reloadables: max 3, all different
-  pick(cakePool, budCake, 0);
-  pick(tubePool, budTube, 0);
-  pick(reloadPool, budReload, 3);
+  pickCategory("500g Cake",  0);
+  pickCategory("Multi-Tube", 0);
+  pickCategory("Reloadable", 3);
+  pickCategory("Fountain",   2);
 
   if (!show.length) {
-    document.getElementById("show-results").innerHTML = "<div style='font-size:13px;color:var(--text3);text-align:center;padding:24px 0'>No products match. Try adjusting filters or raising the budget.</div>";
+    document.getElementById("show-results").innerHTML =
+      "<div style='font-size:13px;color:var(--text3);text-align:center;padding:24px 0'>No products match. Try loosening filters.</div>";
     return;
   }
 
-  // Sort by role: opener > middle > finale
+  // Sort by role
   var roleOrder = {opener:0, middle:1, finale:2};
   show.sort(function(a,b){ return (roleOrder[a.role]||1) - (roleOrder[b.role]||1); });
 
@@ -676,6 +658,7 @@ function buildShow() {
   for (var i = 0; i < show.length; i++) spent += priceNum(show[i]);
   var remaining = budget - spent;
 
+  // Build output grouped by role
   var out = "";
   var lastRole = null;
   var roleLabels = {opener:"OPENER", middle:"BODY", finale:"FINALE"};
@@ -684,89 +667,32 @@ function buildShow() {
     var p = show[i];
     var role = p.role || "middle";
     if (role !== lastRole) {
-      out += "<div class='role-hdr'>" + (roleLabels[role]||"BODY") + "</div>";
+      out += "<div style='font-family:Barlow Condensed;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--text3);margin:14px 0 6px;text-transform:uppercase'>" + (roleLabels[role]||"BODY") + "</div>";
       lastRole = role;
     }
-    out += "<div class='result-card " + role + "'>";
+    out += "<div class='result-card'>";
     out += "<div class='rc-top'><span class='rc-name'>" + p.name + "</span>";
     out += "<span style='font-family:Barlow Condensed;font-size:13px;color:var(--gold);white-space:nowrap'>" + p.price + "</span></div>";
     out += "<div style='font-size:12px;color:var(--text2);margin-top:3px'>" + p.cat + " &nbsp;|&nbsp; " + p.effects.join(", ") + "</div>";
+    if (p.pitch) out += "<div style='font-size:12px;color:var(--text3);margin-top:4px;font-style:italic'>" + p.pitch + "</div>";
     if (p.video) out += "<a href='" + p.video + "' target='_blank' style='display:inline-block;margin-top:6px;font-size:12px;color:var(--gold)'>&#9654; Watch Demo</a>";
     out += "</div>";
   }
 
+  // Budget summary
   var remColor = remaining < 0 ? "#e8251c" : "var(--green)";
-  out += "<div style='margin-top:12px;padding:12px;background:var(--bg2);border-radius:8px;font-family:Barlow Condensed;'>";
+  out += "<div style='margin-top:14px;padding:12px;background:var(--bg2);border-radius:8px;font-family:Barlow Condensed'>";
   out += "<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='color:var(--text2);font-size:13px'>BUDGET</span><span style='color:var(--text);font-size:15px'>$" + budget.toLocaleString() + "</span></div>";
   out += "<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='color:var(--text2);font-size:13px'>SPENT</span><span style='color:var(--text);font-size:15px'>$" + Math.round(spent).toLocaleString() + "</span></div>";
   out += "<div style='display:flex;justify-content:space-between'><span style='color:var(--text2);font-size:13px'>REMAINING</span><span style='color:" + remColor + ";font-size:15px;font-weight:700'>$" + Math.round(remaining).toLocaleString() + "</span></div>";
   out += "</div>";
 
   if (remaining > 20) {
-    out += "<div style='margin-top:8px;padding:10px 12px;background:rgba(245,197,0,0.08);border-radius:8px;font-size:12px;color:var(--gold);font-family:Barlow Condensed'>Still $" + Math.round(remaining).toLocaleString() + " left — consider adding sparklers, novelties, or firecrackers.</div>";
+    out += "<div style='margin-top:8px;padding:10px 12px;background:rgba(245,197,0,0.08);border-radius:8px;font-size:12px;color:var(--gold);font-family:Barlow Condensed'>$" + Math.round(remaining).toLocaleString() + " left — add sparklers, novelties, or firecrackers to fill it out.</div>";
   }
 
   document.getElementById("show-results").innerHTML = out;
 }
-// Wire up nav tabs
-var navTabs = document.querySelectorAll('.nav-tab[data-tab]');
-for (var i = 0; i < navTabs.length; i++) {
-  navTabs[i].addEventListener('click', function() {
-    showTab(this.getAttribute('data-tab'));
-  });
-}
-
-// Wire up category filter chips in product lookup
-function buildCatChips() {
-  var cats = ['All'];
-  for (var i = 0; i < PRODUCTS.length; i++) {
-    if (cats.indexOf(PRODUCTS[i].cat) < 0) cats.push(PRODUCTS[i].cat);
-  }
-  cats.sort();
-  cats = ['All'].concat(cats.filter(function(c){ return c !== 'All'; }));
-  var html = '';
-  for (var i = 0; i < cats.length; i++) {
-    html += '<div class="chip' + (cats[i] === 'All' ? ' active' : '') + '" data-cat="' + cats[i] + '">' + cats[i] + '</div>';
-  }
-  document.getElementById('cat-filters').innerHTML = html;
-  var chips = document.getElementById('cat-filters').querySelectorAll('.chip');
-  for (var i = 0; i < chips.length; i++) {
-    chips[i].addEventListener('click', function() {
-      activeCat = this.getAttribute('data-cat');
-      var all = document.getElementById('cat-filters').querySelectorAll('.chip');
-      for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
-      this.classList.add('active');
-      renderLookup();
-    });
-  }
-}
-
-function renderLookup() {
-  var q = document.getElementById('lu-search').value.toLowerCase();
-  var list = PRODUCTS.filter(function(p) {
-    if (activeCat !== 'All' && p.cat !== activeCat) return false;
-    if (q && p.name.toLowerCase().indexOf(q) < 0 && p.effects.join(' ').toLowerCase().indexOf(q) < 0) return false;
-    return true;
-  });
-  var out = '';
-  for (var i = 0; i < list.length; i++) {
-    var p = list[i];
-    out += '<div class="result-card" style="margin-bottom:10px">';
-    out += '<div class="rc-top"><span class="rc-name">' + p.name + '</span>';
-    out += '<span style="font-family:Barlow Condensed;font-size:13px;color:var(--gold);white-space:nowrap">' + p.price + '</span></div>';
-    out += '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + p.cat + ' &nbsp;|&nbsp; ' + p.effects.join(', ') + '</div>';
-    if (p.desc) out += '<div style="font-size:12px;color:var(--text3);margin-top:4px">' + p.desc + '</div>';
-    if (p.pitch) out += '<div style="font-size:12px;color:var(--gold);margin-top:4px;font-style:italic">' + p.pitch + '</div>';
-    if (p.video) out += '<a href="' + p.video + '" target="_blank" style="display:inline-block;margin-top:6px;font-size:12px;color:var(--gold)">&#9654; Watch Demo</a>';
-    out += '</div>';
-  }
-  document.getElementById('lu-list').innerHTML = out || '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">No products found.</div>';
-}
-
-// Init
-buildCatChips();
-renderLookup();
-
 </script>
 </body>
 </html>
