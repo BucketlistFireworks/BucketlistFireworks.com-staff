@@ -557,100 +557,110 @@ function buildShow() {
 
   var allowSaturn = selSaturn === "yes";
 
-  // --- ALL filters run first, budget is shown as guidance only ---
-  function passesFilters(p) {
+  // Relaxation order: drop the most specific filter first, keep noise/saturn last
+  // Each attempt tries a progressively looser combination
+  var attempts = [
+    {shape: selShape, pattern: selPattern, size: selSize,   noise: selNoise, color: selColor},
+    {shape: 'any',    pattern: selPattern, size: selSize,   noise: selNoise, color: selColor, relaxed: 'burst shape'},
+    {shape: 'any',    pattern: 'any',      size: selSize,   noise: selNoise, color: selColor, relaxed: 'burst shape + shoot pattern'},
+    {shape: 'any',    pattern: 'any',      size: 'any',     noise: selNoise, color: selColor, relaxed: 'burst shape + pattern + size'},
+    {shape: 'any',    pattern: 'any',      size: 'any',     noise: selNoise, color: 'any',   relaxed: 'burst shape + pattern + size + color'},
+    {shape: 'any',    pattern: 'any',      size: 'any',     noise: 'any',    color: 'any',   relaxed: 'all optional filters'}
+  ];
+
+  function passesFilters(p, f) {
     if (!p.showBuilder) return false;
     if (p.saturn && !allowSaturn) return false;
-
     var fx = p.effects.join(" ").toLowerCase();
 
-    if (selNoise === "quiet"    && (fx.includes("loud") || fx.includes("crackle") || fx.includes("whistle"))) return false;
-    if (selNoise === "moderate" && fx.includes("loud")) return false;
-    if (selNoise === "loud"     && !fx.includes("loud") && !fx.includes("crackle")) return false;
+    if (f.noise === "quiet"    && (fx.includes("loud") || fx.includes("crackle") || fx.includes("whistle"))) return false;
+    if (f.noise === "moderate" && fx.includes("loud")) return false;
+    if (f.noise === "loud"     && !fx.includes("loud") && !fx.includes("crackle")) return false;
 
-    if (selColor === "patriotic" && !fx.includes("patriotic") && !fx.includes("red") && !fx.includes("blue")) return false;
-    if (selColor === "colorful"  && !fx.includes("colorful") && !fx.includes("color")) return false;
-    if (selColor === "gold"      && !fx.includes("gold") && !fx.includes("silver") && !fx.includes("brocade") && !fx.includes("glitter")) return false;
-    if (selColor === "neon"      && !fx.includes("neon")) return false;
+    if (f.color === "patriotic" && !fx.includes("patriotic") && !fx.includes("red") && !fx.includes("blue")) return false;
+    if (f.color === "colorful"  && !fx.includes("colorful") && !fx.includes("color")) return false;
+    if (f.color === "gold"      && !fx.includes("gold") && !fx.includes("silver") && !fx.includes("brocade") && !fx.includes("glitter")) return false;
+    if (f.color === "neon"      && !fx.includes("neon")) return false;
 
-    if (selShape === "peony"   && !fx.includes("peony") && !fx.includes("chrysanthemum") && !fx.includes("brocade")) return false;
-    if (selShape === "willow"  && !fx.includes("willow") && !fx.includes("palm") && !fx.includes("cascading") && !fx.includes("glitter")) return false;
-    if (selShape === "crackle" && !fx.includes("crackle")) return false;
-    if (selShape === "strobe"  && !fx.includes("strobe") && !fx.includes("flare")) return false;
-    if (selShape === "mine"    && !fx.includes("mine") && !fx.includes("fan")) return false;
+    if (f.shape === "peony"   && !fx.includes("peony") && !fx.includes("chrysanthemum") && !fx.includes("brocade")) return false;
+    if (f.shape === "willow"  && !fx.includes("willow") && !fx.includes("palm") && !fx.includes("cascading") && !fx.includes("glitter")) return false;
+    if (f.shape === "crackle" && !fx.includes("crackle")) return false;
+    if (f.shape === "strobe"  && !fx.includes("strobe") && !fx.includes("flare")) return false;
+    if (f.shape === "mine"    && !fx.includes("mine") && !fx.includes("fan")) return false;
 
-    if (selPattern === "fan"      && !fx.includes("fan")) return false;
-    if (selPattern === "straight" && fx.includes("fan")) return false;
+    if (f.pattern === "fan"      && !fx.includes("fan")) return false;
+    if (f.pattern === "straight" && fx.includes("fan")) return false;
 
-    if (selSize === "small"  && p.stars > 2) return false;
-    if (selSize === "medium" && p.stars !== 3) return false;
-    if (selSize === "large"  && p.stars < 4) return false;
+    if (f.size === "small"  && p.stars > 2) return false;
+    if (f.size === "medium" && p.stars !== 3) return false;
+    if (f.size === "large"  && p.stars < 4) return false;
 
     return true;
   }
 
-  // Build pools per category — sorted by stars desc
-  var catOrder = ["500g Cake", "Multi-Tube", "Reloadable", "Fountain"];
-  var pools = {};
-  for (var ci = 0; ci < catOrder.length; ci++) {
-    var cat = catOrder[ci];
-    pools[cat] = PRODUCTS.filter(function(p) {
-      return p.cat === cat && passesFilters(p);
+  function getPool(cat, f) {
+    return PRODUCTS.filter(function(p) {
+      return p.cat === cat && passesFilters(p, f);
     }).sort(function(a,b){ return b.stars - a.stars; });
   }
 
-  // Budget guidance per category
-  var budgets = {
-    "500g Cake":  budget * pctCake   / 100,
-    "Multi-Tube": budget * pctTube   / 100,
-    "Reloadable": budget * pctReload / 100,
-    "Fountain":   0
-  };
-
-  // Pick products: fill each category up to its budget
-  // If a category has products but budget is too tight, still show the cheapest match
-  // Reloadables: max 3, all different
-  var show = [];
-  var usedNames = {};
-  var saturnPicked = false;
-
-  function pickCategory(cat, maxItems) {
-    var pool = pools[cat];
-    if (!pool || !pool.length) return;
-    var bud = budgets[cat];
-    var spent = 0;
+  function pickCategory(pool, poolBudget, maxItems, show, usedNames, saturnUsed) {
+    var bud = poolBudget;
     var count = 0;
-
     for (var i = 0; i < pool.length; i++) {
       if (maxItems && count >= maxItems) break;
       var p = pool[i];
       if (usedNames[p.name]) continue;
-      if (p.saturn) { if (saturnPicked) continue; saturnPicked = true; }
+      if (p.saturn) {
+        if (saturnUsed[0]) continue;
+        saturnUsed[0] = true;
+      }
       var px = priceNum(p);
-
-      // Fit within budget. For first item in category, always include cheapest if nothing fits.
-      if (px <= bud * 1.15 || (count === 0 && spent === 0)) {
+      if (px <= bud * 1.15 || (count === 0)) {
         show.push(p);
         usedNames[p.name] = true;
-        spent += px;
         bud -= px;
         count++;
       }
     }
   }
 
-  pickCategory("500g Cake",  0);
-  pickCategory("Multi-Tube", 0);
-  pickCategory("Reloadable", 3);
-  pickCategory("Fountain",   2);
+  var show = [];
+  var relaxedMsg = '';
+
+  for (var ai = 0; ai < attempts.length; ai++) {
+    var f = attempts[ai];
+    var cakePool   = getPool("500g Cake",  f);
+    var tubePool   = getPool("Multi-Tube", f);
+    var reloadPool = getPool("Reloadable", f);
+
+    var totalMatches = cakePool.length + tubePool.length + reloadPool.length;
+    if (totalMatches === 0) continue;
+
+    var usedNames = {};
+    var saturnUsed = [false];
+    show = [];
+
+    var budCake   = budget * pctCake   / 100;
+    var budTube   = budget * pctTube   / 100;
+    var budReload = budget * pctReload / 100;
+
+    pickCategory(cakePool,   budCake,   0, show, usedNames, saturnUsed);
+    pickCategory(tubePool,   budTube,   0, show, usedNames, saturnUsed);
+    pickCategory(reloadPool, budReload, 3, show, usedNames, saturnUsed);
+
+    if (show.length > 0) {
+      if (f.relaxed) relaxedMsg = f.relaxed;
+      break;
+    }
+  }
 
   if (!show.length) {
     document.getElementById("show-results").innerHTML =
-      "<div style='font-size:13px;color:var(--text3);text-align:center;padding:24px 0'>No products match. Try loosening filters.</div>";
+      "<div style='font-size:13px;color:var(--text3);text-align:center;padding:24px 0'>No products match even with relaxed filters. Try a higher budget or different category mix.</div>";
     return;
   }
 
-  // Sort by role
   var roleOrder = {opener:0, middle:1, finale:2};
   show.sort(function(a,b){ return (roleOrder[a.role]||1) - (roleOrder[b.role]||1); });
 
@@ -658,8 +668,15 @@ function buildShow() {
   for (var i = 0; i < show.length; i++) spent += priceNum(show[i]);
   var remaining = budget - spent;
 
-  // Build output grouped by role
   var out = "";
+
+  // Show relaxation notice if filters were loosened
+  if (relaxedMsg) {
+    out += "<div style='margin-bottom:12px;padding:10px 12px;background:rgba(232,37,28,0.08);border-radius:8px;font-size:12px;color:#e8251c;font-family:Barlow Condensed'>";
+    out += "&#9888; No exact match — relaxed: <strong>" + relaxedMsg + "</strong>. Best available shown.";
+    out += "</div>";
+  }
+
   var lastRole = null;
   var roleLabels = {opener:"OPENER", middle:"BODY", finale:"FINALE"};
 
@@ -679,7 +696,6 @@ function buildShow() {
     out += "</div>";
   }
 
-  // Budget summary
   var remColor = remaining < 0 ? "#e8251c" : "var(--green)";
   out += "<div style='margin-top:14px;padding:12px;background:var(--bg2);border-radius:8px;font-family:Barlow Condensed'>";
   out += "<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='color:var(--text2);font-size:13px'>BUDGET</span><span style='color:var(--text);font-size:15px'>$" + budget.toLocaleString() + "</span></div>";
