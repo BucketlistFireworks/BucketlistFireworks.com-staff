@@ -33,6 +33,9 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);max-
 .chip.sel-fx{background:var(--red);color:#fff;border-color:var(--red)}
 .chip.sel-dur{background:var(--green);color:#fff;border-color:var(--green)}
 .chip.active{background:var(--red);color:#fff;border-color:var(--red)}
+.rc-remove{float:right;background:none;border:none;color:var(--text3);font-size:18px;line-height:1;cursor:pointer;padding:0 0 0 8px;margin-top:-2px}
+.rc-remove:hover{color:#e8251c}
+.result-card{position:relative}
 .bud-display{font-family:'Barlow Condensed',sans-serif;font-size:52px;font-weight:900;color:var(--text);line-height:1;margin-bottom:6px}
 .bud-display sup{font-size:28px;color:var(--text2);vertical-align:super}
 input[type=range]{width:100%;accent-color:var(--red);margin-bottom:4px;cursor:pointer}
@@ -106,7 +109,7 @@ var selSize = 'any';
 
 function setShape(val) {
   selShape = val;
-  ['any','peony','willow','crackle','strobe','mine'].forEach(function(v) {
+  ['any','peony','willow','crackle','strobe','mine','whistle'].forEach(function(v) {
     document.getElementById('shape-' + v).classList.toggle('active', v === val);
   });
 }
@@ -218,6 +221,54 @@ function priceNum(p) {
   var m = p.price.match(/\$(\d+\.\d+)/);
   return m ? parseFloat(m[1]) : 0;
 }
+
+function updateBudgetSummary() {
+  var budget = window._blBudget || 0;
+  var items = window._blShow || [];
+  var spent = 0;
+  for (var i = 0; i < items.length; i++) {
+    if (!items[i].removed) spent += items[i].price;
+  }
+  var remaining = budget - spent;
+  var remColor = remaining < 0 ? "#e8251c" : "var(--green)";
+  var el = document.getElementById('bl-budget-summary');
+  if (!el) return;
+  var h = "<div style='padding:12px;background:var(--bg2);border-radius:8px;font-family:Barlow Condensed'>";
+  h += "<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='color:var(--text2);font-size:13px'>BUDGET</span><span style='color:var(--text);font-size:15px'>$" + budget.toLocaleString() + "</span></div>";
+  h += "<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='color:var(--text2);font-size:13px'>SPENT</span><span style='color:var(--text);font-size:15px'>$" + Math.round(spent).toLocaleString() + "</span></div>";
+  h += "<div style='display:flex;justify-content:space-between'><span style='color:var(--text2);font-size:13px'>REMAINING</span><span style='color:" + remColor + ";font-size:15px;font-weight:700'>$" + Math.round(remaining).toLocaleString() + "</span></div>";
+  h += "</div>";
+  if (remaining > 20) {
+    h += "<div style='margin-top:8px;padding:10px 12px;background:rgba(245,197,0,0.08);border-radius:8px;font-size:12px;color:var(--gold);font-family:Barlow Condensed'>$" + Math.round(remaining).toLocaleString() + " left — add sparklers, novelties, or firecrackers.</div>";
+  } else if (remaining < 0) {
+    h += "<div style='margin-top:8px;padding:10px 12px;background:rgba(232,37,28,0.08);border-radius:8px;font-size:12px;color:#e8251c;font-family:Barlow Condensed'>$" + Math.abs(Math.round(remaining)).toLocaleString() + " over budget — remove an item above.</div>";
+  }
+  el.innerHTML = h;
+}
+
+function removeShowItem(idx) {
+  var card = document.getElementById('rc-' + idx);
+  if (card) {
+    card.style.opacity = '0.35';
+    card.style.textDecoration = 'line-through';
+    var btn = card.querySelector('.rc-remove');
+    if (btn) { btn.innerHTML = '&#8635;'; btn.title = 'Restore'; btn.setAttribute('onclick','restoreShowItem(' + idx + ')'); }
+  }
+  if (window._blShow && window._blShow[idx]) window._blShow[idx].removed = true;
+  updateBudgetSummary();
+}
+
+function restoreShowItem(idx) {
+  var card = document.getElementById('rc-' + idx);
+  if (card) {
+    card.style.opacity = '1';
+    card.style.textDecoration = 'none';
+    var btn = card.querySelector('.rc-remove');
+    if (btn) { btn.innerHTML = '&#10005;'; btn.title = 'Remove'; btn.setAttribute('onclick','removeShowItem(' + idx + ')'); }
+  }
+  if (window._blShow && window._blShow[idx]) window._blShow[idx].removed = false;
+  updateBudgetSummary();
+}
 </script>
 </head>
 <body>
@@ -310,6 +361,7 @@ function priceNum(p) {
       <div class="chip" id="shape-crackle" onclick="setShape('crackle')">Crackle</div>
       <div class="chip" id="shape-strobe" onclick="setShape('strobe')">Strobe</div>
       <div class="chip" id="shape-mine" onclick="setShape('mine')">Mine / Fan</div>
+      <div class="chip" id="shape-whistle" onclick="setShape('whistle')">Whistle</div>
     </div>
 
     <!-- STEP 7: SHOOT PATTERN -->
@@ -560,7 +612,7 @@ function buildShow() {
   // Relaxation order: drop the most specific filter first, keep noise/saturn last
   // Each attempt tries a progressively looser combination
   var attempts = [
-    {shape: selShape, pattern: selPattern, size: selSize,   noise: selNoise, color: selColor},
+    {shape: selShape, pattern: selPattern, size: selSize,   noise: selNoise, color: selColor},  // includes whistle if selShape==='whistle'
     {shape: 'any',    pattern: selPattern, size: selSize,   noise: selNoise, color: selColor, relaxed: 'burst shape'},
     {shape: 'any',    pattern: 'any',      size: selSize,   noise: selNoise, color: selColor, relaxed: 'burst shape + shoot pattern'},
     {shape: 'any',    pattern: 'any',      size: 'any',     noise: selNoise, color: selColor, relaxed: 'burst shape + pattern + size'},
@@ -587,6 +639,7 @@ function buildShow() {
     if (f.shape === "crackle" && !fx.includes("crackle")) return false;
     if (f.shape === "strobe"  && !fx.includes("strobe") && !fx.includes("flare")) return false;
     if (f.shape === "mine"    && !fx.includes("mine") && !fx.includes("fan")) return false;
+    if (f.shape === "whistle" && !fx.includes("whistle")) return false;
 
     if (f.pattern === "fan"      && !fx.includes("fan")) return false;
     if (f.pattern === "straight" && fx.includes("fan")) return false;
@@ -680,6 +733,10 @@ function buildShow() {
   var lastRole = null;
   var roleLabels = {opener:"OPENER", middle:"BODY", finale:"FINALE"};
 
+  // Store show in a removable array on the window so remove buttons can access it
+  window._blShow = show.map(function(p){ return {name: p.name, price: priceNum(p)}; });
+  window._blBudget = budget;
+
   for (var i = 0; i < show.length; i++) {
     var p = show[i];
     var role = p.role || "middle";
@@ -687,27 +744,23 @@ function buildShow() {
       out += "<div style='font-family:Barlow Condensed;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--text3);margin:14px 0 6px;text-transform:uppercase'>" + (roleLabels[role]||"BODY") + "</div>";
       lastRole = role;
     }
-    out += "<div class='result-card'>";
-    out += "<div class='rc-top'><span class='rc-name'>" + p.name + "</span>";
-    out += "<span style='font-family:Barlow Condensed;font-size:13px;color:var(--gold);white-space:nowrap'>" + p.price + "</span></div>";
+    out += "<div class='result-card' id='rc-" + i + "'>";
+    out += "<div class='rc-top'>";
+    out += "<span class='rc-name'>" + p.name + "</span>";
+    out += "<span style='display:flex;align-items:center;gap:6px'>";
+    out += "<span style='font-family:Barlow Condensed;font-size:13px;color:var(--gold);white-space:nowrap'>" + p.price + "</span>";
+    out += "<button class='rc-remove' onclick='removeShowItem(" + i + ")' title='Remove'>&#10005;</button>";
+    out += "</span></div>";
     out += "<div style='font-size:12px;color:var(--text2);margin-top:3px'>" + p.cat + " &nbsp;|&nbsp; " + p.effects.join(", ") + "</div>";
     if (p.pitch) out += "<div style='font-size:12px;color:var(--text3);margin-top:4px;font-style:italic'>" + p.pitch + "</div>";
     if (p.video) out += "<a href='" + p.video + "' target='_blank' style='display:inline-block;margin-top:6px;font-size:12px;color:var(--gold)'>&#9654; Watch Demo</a>";
     out += "</div>";
   }
 
-  var remColor = remaining < 0 ? "#e8251c" : "var(--green)";
-  out += "<div style='margin-top:14px;padding:12px;background:var(--bg2);border-radius:8px;font-family:Barlow Condensed'>";
-  out += "<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='color:var(--text2);font-size:13px'>BUDGET</span><span style='color:var(--text);font-size:15px'>$" + budget.toLocaleString() + "</span></div>";
-  out += "<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='color:var(--text2);font-size:13px'>SPENT</span><span style='color:var(--text);font-size:15px'>$" + Math.round(spent).toLocaleString() + "</span></div>";
-  out += "<div style='display:flex;justify-content:space-between'><span style='color:var(--text2);font-size:13px'>REMAINING</span><span style='color:" + remColor + ";font-size:15px;font-weight:700'>$" + Math.round(remaining).toLocaleString() + "</span></div>";
-  out += "</div>";
-
-  if (remaining > 20) {
-    out += "<div style='margin-top:8px;padding:10px 12px;background:rgba(245,197,0,0.08);border-radius:8px;font-size:12px;color:var(--gold);font-family:Barlow Condensed'>$" + Math.round(remaining).toLocaleString() + " left — add sparklers, novelties, or firecrackers to fill it out.</div>";
-  }
+  out += "<div id='bl-budget-summary' style='margin-top:14px'></div>";
 
   document.getElementById("show-results").innerHTML = out;
+  updateBudgetSummary();
 }
 </script>
 </body>
