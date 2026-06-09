@@ -42,6 +42,10 @@ input[type=range]{width:100%;accent-color:var(--red);margin-bottom:4px;cursor:po
 .lbl-opener{background:var(--green-light);color:#085041}
 .lbl-middle{background:var(--gold-light);color:#633806}
 .lbl-finale{background:var(--red-light);color:#7A1400}
+.mix-row{margin-bottom:10px}
+.mix-label{display:flex;justify-content:space-between;font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-bottom:4px}
+.mix-pct{color:var(--gold);font-weight:700;font-size:14px}
+.mix-slider{width:100%;accent-color:var(--gold)}
 .result-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px}
 .result-card.opener{border-left:3px solid var(--green)}
 .result-card.middle{border-left:3px solid var(--gold)}
@@ -108,18 +112,70 @@ input[type=range]{width:100%;accent-color:var(--red);margin-bottom:4px;cursor:po
   </div>
 
   <div id="screen-builder" class="screen active">
-    <div class="slabel">Effects customer wants</div>
-    <div class="chip-wrap" id="fx-chips"></div>
-    <div class="slabel" style="margin-top:14px">Show duration</div>
-    <div class="chip-wrap" id="dur-chips">
-      <div class="chip" id="dur-short" data-dur="short">Short 5-10 min</div>
-      <div class="chip" id="dur-medium" data-dur="medium">Medium 15-20 min</div>
-      <div class="chip" id="dur-long" data-dur="long">Full 30+ min</div>
-    </div>
-    <div class="slabel" style="margin-top:14px">Customer budget</div>
-    <div class="bud-display"><sup>$</sup><span id="bud-num">150</span></div>
-    <input type="range" min="50" max="5000" step="25" value="150" id="bud-slider" oninput="document.getElementById('bud-num').textContent=parseInt(this.value).toLocaleString()">
+
+    <!-- STEP 1: BUDGET -->
+    <div class="slabel">Customer budget</div>
+    <div class="bud-display"><sup>$</sup><span id="bud-num">500</span></div>
+    <input type="range" min="50" max="5000" step="25" value="500" id="bud-slider" oninput="document.getElementById('bud-num').textContent=parseInt(this.value).toLocaleString()">
     <div class="bud-range-labels"><span>$50</span><span>$500</span><span>$1,000</span><span>$2,500</span><span>$5,000</span></div>
+
+    <!-- STEP 2: CATEGORY MIX -->
+    <div class="slabel" style="margin-top:18px">What kind of stuff do they want?
+      <span id="mix-total-badge" style="float:right;font-size:11px;color:var(--gold)">Must = 100%</span>
+    </div>
+
+    <div class="mix-row">
+      <div class="mix-label">
+        <span>500g Cakes</span>
+        <span class="mix-pct" id="lbl-cake">50%</span>
+      </div>
+      <input type="range" min="0" max="100" step="5" value="50" id="mix-cake" oninput="syncMix('cake')" class="mix-slider">
+    </div>
+    <div class="mix-row">
+      <div class="mix-label">
+        <span>Multi-Tubes / 200g</span>
+        <span class="mix-pct" id="lbl-tube">35%</span>
+      </div>
+      <input type="range" min="0" max="100" step="5" value="35" id="mix-tube" oninput="syncMix('tube')" class="mix-slider">
+    </div>
+    <div class="mix-row">
+      <div class="mix-label">
+        <span>Reloadable Shells</span>
+        <span class="mix-pct" id="lbl-reload">15%</span>
+      </div>
+      <input type="range" min="0" max="100" step="5" value="15" id="mix-reload" oninput="syncMix('reload')" class="mix-slider">
+    </div>
+
+    <div id="mix-warning" style="display:none;color:#e8251c;font-size:12px;margin-top:4px;text-align:center;">
+      Percentages must add up to 100% before building.
+    </div>
+
+    <!-- STEP 3: SATURN MISSILES -->
+    <div class="slabel" style="margin-top:18px">Saturn Missiles</div>
+    <div class="chip-wrap" id="saturn-chips">
+      <div class="chip active" id="saturn-no" onclick="setSaturn('no')">None</div>
+      <div class="chip" id="saturn-yes" onclick="setSaturn('yes')">Include 1 Saturn</div>
+    </div>
+
+    <!-- STEP 4: NOISE LEVEL -->
+    <div class="slabel" style="margin-top:18px">Noise level</div>
+    <div class="chip-wrap" id="noise-chips">
+      <div class="chip active" id="noise-any" onclick="setNoise('any')">Any</div>
+      <div class="chip" id="noise-quiet" onclick="setNoise('quiet')">Quiet</div>
+      <div class="chip" id="noise-moderate" onclick="setNoise('moderate')">Moderate</div>
+      <div class="chip" id="noise-loud" onclick="setNoise('loud')">Loud</div>
+    </div>
+
+    <!-- STEP 5: COLORS -->
+    <div class="slabel" style="margin-top:18px">Colors</div>
+    <div class="chip-wrap" id="color-chips">
+      <div class="chip active" id="color-any" onclick="setColor('any')">Any</div>
+      <div class="chip" id="color-patriotic" onclick="setColor('patriotic')">Patriotic</div>
+      <div class="chip" id="color-colorful" onclick="setColor('colorful')">Colorful</div>
+      <div class="chip" id="color-gold" onclick="setColor('gold')">Gold &amp; Silver</div>
+      <div class="chip" id="color-neon" onclick="setColor('neon')">Neon</div>
+    </div>
+
     <button class="build-btn" onclick="buildShow()">Build Their Show</button>
     <div id="show-results" style="margin-top:16px"></div>
   </div>
@@ -174,9 +230,9 @@ var PRODUCTS = [
 {name:"2000 Firecracker",cat:"Firecracker",effects:["Loud","Bang","Ground"],desc:"2000-count string — one of our longest continuous firecracker sequences.",pitch:"2000 pops. It's ridiculous. Customers love it.",role:"",stars:5,price:"$29.95 BD",video:"",duration:15,showBuilder:false},
 {name:"M-150 Firecrackers",cat:"Firecracker",effects:["Loud","Bang","Ground"],desc:"Heavy-duty M-150 firecrackers — extra loud single shots.",pitch:"For the customer who wants the loudest single pop we've got.",role:"",stars:4,price:"$0.50 ea / $12.95 BD",video:"",duration:15,showBuilder:false},
 // MULTI-TUBE
-{name:"200 Shot Color Saturn",cat:"Multi-Tube",effects:["Aerial","Colorful","Multi-effect"],desc:"200-shot multi-tube fan array — bursts of colored stars across a wide spread.",pitch:"200 shots is hard to argue with. Tell them it fills the whole sky.",role:"middle",stars:5,price:"$19.95",video:"https://vimeo.com/170825045",duration:45,showBuilder:true},
-{name:"25 Saturn",cat:"Multi-Tube",effects:["Aerial","Colorful"],desc:"25-shot saturn tube — colorful aerial bursts in a quick tight sequence.",pitch:"Quick and colorful — good middle filler or backyard budget pick.",role:"middle",stars:4,price:"$4.95",video:"",duration:45,showBuilder:true},
-{name:"300 Shot Saturn",cat:"Multi-Tube",effects:["Aerial","Colorful","Multi-effect"],desc:"300-shot saturn — one of the biggest multi-tube counts we carry. Long and impressive.",pitch:"300 shots. Full stop. Customers will not be disappointed.",role:"middle",stars:5,price:"$27.95",video:"https://vimeo.com/170824964",duration:45,showBuilder:true},
+{name:"200 Shot Color Saturn",cat:"Multi-Tube",effects:["Aerial","Colorful","Multi-effect"],desc:"200-shot multi-tube fan array — bursts of colored stars across a wide spread.",pitch:"200 shots is hard to argue with. Tell them it fills the whole sky.",role:"middle",stars:5,price:"$19.95",video:"https://vimeo.com/170825045",duration:45,showBuilder:true,saturn:true},
+{name:"25 Saturn",cat:"Multi-Tube",effects:["Aerial","Colorful"],desc:"25-shot saturn tube — colorful aerial bursts in a quick tight sequence.",pitch:"Quick and colorful — good middle filler or backyard budget pick.",role:"middle",stars:4,price:"$4.95",video:"",duration:45,showBuilder:true,saturn:true},
+{name:"300 Shot Saturn",cat:"Multi-Tube",effects:["Aerial","Colorful","Multi-effect"],desc:"300-shot saturn — one of the biggest multi-tube counts we carry. Long and impressive.",pitch:"300 shots. Full stop. Customers will not be disappointed.",role:"middle",stars:5,price:"$27.95",video:"https://vimeo.com/170824964",duration:45,showBuilder:true,saturn:true},
 {name:"Diesel Devil",cat:"Multi-Tube",effects:["Aerial","Loud","Crackle"],desc:"Crackling aerial multi-tube with a loud, aggressive character — fast-paced and punchy.",pitch:"For the customer who wants loud and fast. Tell them it hits hard.",role:"middle",stars:4,price:"$20.95",video:"https://vimeo.com/170825034",duration:45,showBuilder:true},
 {name:"Exploder",cat:"Multi-Tube",effects:["Aerial","Loud","Crackle"],desc:"High-report multi-tube — loud aerial breaks with sharp crackle effects.",pitch:"Loud and proud. Great middle-of-show energy booster.",role:"middle",stars:4,price:"$18.95",video:"https://vimeo.com/268831940",duration:45,showBuilder:true},
 {name:"Fight N Faith",cat:"Multi-Tube",effects:["Aerial","Patriotic","Colorful"],desc:"Patriotic-themed multi-tube with colorful aerial bursts and bold star patterns.",pitch:"Good storytelling product — tell them the name and they're already sold.",role:"middle",stars:4,price:"$13.95",video:"https://vimeo.com/170825049",duration:45,showBuilder:true},
@@ -332,6 +388,48 @@ var PRODUCTS = [
 
 var selFx = [];
 var selDur = null;
+var selSaturn = 'no';
+var selNoise = 'any';
+var selColor = 'any';
+
+function setSaturn(val) {
+  selSaturn = val;
+  document.getElementById('saturn-no').classList.toggle('active', val === 'no');
+  document.getElementById('saturn-yes').classList.toggle('active', val === 'yes');
+}
+
+function setNoise(val) {
+  selNoise = val;
+  ['any','quiet','moderate','loud'].forEach(function(v) {
+    document.getElementById('noise-' + v).classList.toggle('active', v === val);
+  });
+}
+
+function setColor(val) {
+  selColor = val;
+  ['any','patriotic','colorful','gold','neon'].forEach(function(v) {
+    document.getElementById('color-' + v).classList.toggle('active', v === val);
+  });
+}
+
+function syncMix(changed) {
+  var cake   = parseInt(document.getElementById('mix-cake').value, 10);
+  var tube   = parseInt(document.getElementById('mix-tube').value, 10);
+  var reload = parseInt(document.getElementById('mix-reload').value, 10);
+  var total = cake + tube + reload;
+  document.getElementById('lbl-cake').textContent   = cake   + '%';
+  document.getElementById('lbl-tube').textContent   = tube   + '%';
+  document.getElementById('lbl-reload').textContent = reload + '%';
+  var badge = document.getElementById('mix-total-badge');
+  if (total === 100) {
+    badge.textContent = '100% ✓';
+    badge.style.color = 'var(--green)';
+    document.getElementById('mix-warning').style.display = 'none';
+  } else {
+    badge.textContent = total + '% (must = 100%)';
+    badge.style.color = '#e8251c';
+  }
+}
 var openLookup = null;
 var activeCat = "All";
 var SHOW_BUILDER_CATS = ["500g Cake","Multi-Tube","Reloadable","Fountain"];
@@ -390,185 +488,138 @@ function priceNum(p) {
 
 function buildShow() {
   var budget = parseInt(document.getElementById("bud-slider").value, 10);
-  var targetSecs = selDur === "short" ? 540 : selDur === "medium" ? 1080 : 1800;
 
-  var pool = PRODUCTS.filter(function(p) {
-    if (!p.showBuilder) return false;
-    if (selFx.length === 0) return true;
-    for (var i = 0; i < selFx.length; i++) {
-      if (p.effects.indexOf(selFx[i]) >= 0) return true;
-    }
-    return false;
-  });
+  // Get category percentages
+  var pctCake   = parseInt(document.getElementById("mix-cake").value, 10);
+  var pctTube   = parseInt(document.getElementById("mix-tube").value, 10);
+  var pctReload = parseInt(document.getElementById("mix-reload").value, 10);
+  var total = pctCake + pctTube + pctReload;
 
-  var finales = pool.filter(function(p){ return p.role === "finale"; }).sort(function(a,b){ return b.stars-a.stars; });
-  var openers = pool.filter(function(p){ return p.role === "opener"; }).sort(function(a,b){ return b.stars-a.stars; });
-  var middles = pool.filter(function(p){ return p.role === "middle"; }).sort(function(a,b){ return b.stars-a.stars; });
+  if (total !== 100) {
+    document.getElementById("mix-warning").style.display = "block";
+    document.getElementById("show-results").innerHTML = "";
+    return;
+  }
+  document.getElementById("mix-warning").style.display = "none";
 
-  var show = [], spent = 0, totalSecs = 0;
+  var budCake   = budget * pctCake   / 100;
+  var budTube   = budget * pctTube   / 100;
+  var budReload = budget * pctReload / 100;
 
-  function tryAdd(p) {
-    if (!p) return false;
-    // No repeats unless budget > $750
-    if (budget <= 750) {
-      for (var i = 0; i < show.length; i++) { if (show[i].name === p.name) return false; }
-    }
-    var px = priceNum(p);
-    if (spent + px <= budget * 1.05 + 30) {
-      show.push(p); spent += px; totalSecs += p.duration; return true;
-    }
-    return false;
+  var allowSaturn = selSaturn === "yes";
+  var noiseFilter = selNoise || "any";
+  var colorFilter = selColor || "any";
+
+  function noiseOk(p) {
+    if (noiseFilter === "any") return true;
+    var fx = p.effects.join(" ").toLowerCase();
+    if (noiseFilter === "quiet")    return !fx.includes("loud") && !fx.includes("crackle") && !fx.includes("whistle");
+    if (noiseFilter === "moderate") return !fx.includes("loud");
+    if (noiseFilter === "loud")     return fx.includes("loud") || fx.includes("crackle");
+    return true;
   }
 
-  if (finales.length) tryAdd(finales[0]);
-  if (openers.length) tryAdd(openers[0]);
-  var mi = 0;
-  while (totalSecs < targetSecs && mi < middles.length) { tryAdd(middles[mi]); mi++; }
-  if (openers.length > 1) tryAdd(openers[1]);
+  function colorOk(p) {
+    if (colorFilter === "any") return true;
+    var fx = p.effects.join(" ").toLowerCase();
+    if (colorFilter === "patriotic") return fx.includes("patriotic") || fx.includes("red") || fx.includes("blue");
+    if (colorFilter === "colorful")  return fx.includes("colorful") || fx.includes("color");
+    if (colorFilter === "gold")      return fx.includes("gold") || fx.includes("silver") || fx.includes("brocade") || fx.includes("glitter");
+    if (colorFilter === "neon")      return fx.includes("neon");
+    return true;
+  }
+
+  function getPool(cats) {
+    return PRODUCTS.filter(function(p) {
+      if (!p.showBuilder) return false;
+      if (cats.indexOf(p.cat) < 0) return false;
+      if (p.saturn && !allowSaturn) return false;
+      if (!noiseOk(p)) return false;
+      if (!colorOk(p)) return false;
+      return true;
+    }).sort(function(a,b){ return b.stars - a.stars; });
+  }
+
+  var cakePool   = getPool(["500g Cake"]);
+  var tubePool   = getPool(["Multi-Tube"]);
+  var reloadPool = getPool(["Reloadable"]);
+
+  var show = [];
+  var usedNames = {};
+  var saturnPicked = false;
+
+  function pick(pool, poolBudget, maxItems) {
+    var poolSpent = 0;
+    var count = 0;
+    for (var i = 0; i < pool.length; i++) {
+      if (maxItems && count >= maxItems) break;
+      var p = pool[i];
+      if (usedNames[p.name]) continue;
+      // Hard rule: max 1 Saturn ever
+      if (p.saturn) {
+        if (saturnPicked) continue;
+        saturnPicked = true;
+      }
+      var px = priceNum(p);
+      if (poolSpent + px <= poolBudget * 1.08) {
+        show.push(p);
+        usedNames[p.name] = true;
+        poolSpent += px;
+        count++;
+      }
+    }
+  }
+
+  // Pick for each category
+  // Reloadables: max 3, all different
+  pick(cakePool, budCake, 0);
+  pick(tubePool, budTube, 0);
+  pick(reloadPool, budReload, 3);
 
   if (!show.length) {
-    document.getElementById("show-results").innerHTML = '<div style="font-size:13px;color:var(--text3);text-align:center;padding:24px 0">No products match. Try fewer effect filters or raise the budget.</div>';
+    document.getElementById("show-results").innerHTML = "<div style='font-size:13px;color:var(--text3);text-align:center;padding:24px 0'>No products match. Try adjusting filters or raising the budget.</div>";
     return;
   }
 
-  var roleOrder = { opener:0, middle:1, finale:2 };
+  // Sort by role: opener > middle > finale
+  var roleOrder = {opener:0, middle:1, finale:2};
   show.sort(function(a,b){ return (roleOrder[a.role]||1) - (roleOrder[b.role]||1); });
 
-  var mins = Math.floor(totalSecs/60), secs = totalSecs%60;
-  var overBudget = spent > budget;
-  var html = "", lastRole = null;
+  var spent = 0;
+  for (var i = 0; i < show.length; i++) spent += priceNum(show[i]);
+  var remaining = budget - spent;
+
+  var out = "";
+  var lastRole = null;
+  var roleLabels = {opener:"OPENER", middle:"BODY", finale:"FINALE"};
 
   for (var i = 0; i < show.length; i++) {
     var p = show[i];
     var role = p.role || "middle";
     if (role !== lastRole) {
-      var lbl = {opener:"Opener",middle:"Body",finale:"Finale"}[role] || role;
-      html += '<div class="show-section-lbl lbl-' + role + '">' + lbl + '</div>';
+      out += "<div class='role-hdr'>" + (roleLabels[role]||"BODY") + "</div>";
       lastRole = role;
     }
-    var priceStr = p.price || "See staff";
-    var fxHtml = "";
-    for (var j = 0; j < Math.min(p.effects.length, 5); j++) fxHtml += '<span class="fx-tag">' + p.effects[j] + '</span>';
-    var vidBtn = p.video ? '<a class="vid-btn" href="' + p.video + '" target="_blank">&#9654; Watch video</a>' : '';
-    var durStr = "~" + Math.round(p.duration/60*10)/10 + " min";
-    html += '<div class="result-card ' + role + '">' +
-      '<div class="rc-top"><div><div class="rc-name">' + p.name + '</div><div class="rc-cat">' + p.cat + '</div></div><div class="rc-price">' + priceStr + '</div></div>' +
-      '<div class="fx-tags">' + fxHtml + '</div>' +
-      '<div class="rc-desc">' + p.desc + '</div>' +
-      '<div class="rc-dur">&#9201; ' + durStr + '</div>' +
-      '<div class="pitch-box"><div class="pitch-label">What to say</div><div class="pitch-text">' + p.pitch + '</div></div>' +
-      vidBtn + '</div>';
+    out += "<div class='result-card " + role + "'>";
+    out += "<div class='rc-top'><span class='rc-name'>" + p.name + "</span>";
+    out += "<span style='font-family:Barlow Condensed;font-size:13px;color:var(--gold);white-space:nowrap'>" + p.price + "</span></div>";
+    out += "<div style='font-size:12px;color:var(--text2);margin-top:3px'>" + p.cat + " &nbsp;|&nbsp; " + p.effects.join(", ") + "</div>";
+    if (p.video) out += "<a href='" + p.video + "' target='_blank' style='display:inline-block;margin-top:6px;font-size:12px;color:var(--gold)'>&#9654; Watch Demo</a>";
+    out += "</div>";
   }
 
-  var remaining = budget - spent;
-  if (remaining >= 12 && !overBudget) {
-    var extras = pool.filter(function(p) {
-      for (var i=0;i<show.length;i++){if(show[i].name===p.name)return false;}
-      return priceNum(p) <= remaining && priceNum(p) > 0;
-    }).sort(function(a,b){return b.stars-a.stars;}).slice(0,2);
-    if (extras.length) {
-      html += '<div class="upsell-box"><div class="upsell-label">$' + Math.round(remaining) + ' left — suggest adding:</div>';
-      for (var i=0;i<extras.length;i++) {
-        html += '<div class="upsell-item">+ ' + extras[i].name + (extras[i].price?' (' + extras[i].price + ')':'') + ' — ' + extras[i].desc.split('.')[0] + '</div>';
-      }
-      html += '</div>';
-    }
+  var remColor = remaining < 0 ? "#e8251c" : "var(--green)";
+  out += "<div style='margin-top:12px;padding:12px;background:var(--bg2);border-radius:8px;font-family:Barlow Condensed;'>";
+  out += "<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='color:var(--text2);font-size:13px'>BUDGET</span><span style='color:var(--text);font-size:15px'>$" + budget.toLocaleString() + "</span></div>";
+  out += "<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='color:var(--text2);font-size:13px'>SPENT</span><span style='color:var(--text);font-size:15px'>$" + Math.round(spent).toLocaleString() + "</span></div>";
+  out += "<div style='display:flex;justify-content:space-between'><span style='color:var(--text2);font-size:13px'>REMAINING</span><span style='color:" + remColor + ";font-size:15px;font-weight:700'>$" + Math.round(remaining).toLocaleString() + "</span></div>";
+  out += "</div>";
+
+  if (remaining > 20) {
+    out += "<div style='margin-top:8px;padding:10px 12px;background:rgba(245,197,0,0.08);border-radius:8px;font-size:12px;color:var(--gold);font-family:Barlow Condensed'>Still $" + Math.round(remaining).toLocaleString() + " left — consider adding sparklers, novelties, or firecrackers.</div>";
   }
 
-  var overClass = overBudget ? " over-budget" : "";
-  html += '<div class="show-time-bar"><div><div class="show-time-lbl">Est. show time</div><div class="show-time-val">' + mins + 'm ' + secs + 's</div></div>' +
-    '<div style="text-align:right"><div class="show-time-lbl">Total</div><div class="show-total-price' + overClass + '">' + (spent ? '$'+Math.round(spent*100)/100 : 'TBD') + (overBudget?' &#9888;':'') + '</div></div></div>';
-  html += '<button class="reset-btn" onclick="resetBuilder()">Start over</button>';
-  document.getElementById("show-results").innerHTML = html;
+  document.getElementById("show-results").innerHTML = out;
 }
 
-function resetBuilder() {
-  selFx = []; selDur = null;
-  buildFxChips();
-  document.getElementById("dur-short").classList.remove("sel-dur");
-  document.getElementById("dur-medium").classList.remove("sel-dur");
-  document.getElementById("dur-long").classList.remove("sel-dur");
-  document.getElementById("bud-slider").value = 150;
-  document.getElementById("bud-num").textContent = "150";
-  document.getElementById("show-results").innerHTML = "";
-}
-
-function buildCatFilters() {
-  var cats = {All:true};
-  for (var i=0;i<PRODUCTS.length;i++) cats[PRODUCTS[i].cat] = true;
-  var catList = Object.keys(cats).sort();
-  catList.splice(catList.indexOf("All"),1);
-  catList.unshift("All");
-  var html = "";
-  for (var i=0;i<catList.length;i++) {
-    var active = catList[i]==="All" ? " active" : "";
-    html += '<div class="filter-chip' + active + '" data-cat="' + catList[i].replace(/"/g,"&quot;") + '">' + catList[i] + '</div>';
-  }
-  document.getElementById("cat-filters").innerHTML = html;
-  var chips = document.getElementById("cat-filters").querySelectorAll(".filter-chip");
-  for (var i=0;i<chips.length;i++) {
-    chips[i].addEventListener("click", function() { setCat(this, this.getAttribute("data-cat")); });
-  }
-}
-
-function setCat(el, cat) {
-  activeCat = cat;
-  var chips = document.querySelectorAll(".filter-chip");
-  for (var i=0;i<chips.length;i++) chips[i].classList.remove("active");
-  el.classList.add("active");
-  renderLookup();
-}
-
-function renderLookup() {
-  var q = (document.getElementById("lu-search").value || "").toLowerCase();
-  var list = PRODUCTS.filter(function(p) {
-    var catOk = activeCat === "All" || p.cat === activeCat;
-    var qOk = !q || p.name.toLowerCase().indexOf(q)>=0 ||
-      p.effects.join(" ").toLowerCase().indexOf(q)>=0 ||
-      (p.desc||"").toLowerCase().indexOf(q)>=0;
-    return catOk && qOk;
-  });
-  if (!list.length) {
-    document.getElementById("lu-list").innerHTML = '<div class="no-results">No products match</div>';
-    return;
-  }
-  var html = "";
-  for (var i=0;i<list.length;i++) {
-    var p = list[i];
-    var priceStr = p.price || "See staff";
-    var fxHtml = "";
-    for (var j=0;j<Math.min(p.effects.length,6);j++) fxHtml += '<span class="fx-tag">' + p.effects[j] + '</span>';
-    var vidBtn = p.video ? '<a class="vid-btn" href="' + p.video + '" target="_blank">&#9654; Watch video</a>' : '';
-    var isOpen = openLookup === i ? " open" : "";
-    html += '<div class="plookup-card' + isOpen + '" data-idx="' + i + '">' +
-      '<div class="pl-top"><div><div class="pl-name">' + p.name + '</div><div class="pl-cat">' + p.cat + '</div></div><div class="pl-price">' + priceStr + '</div></div>' +
-      '<div class="pl-detail"><div class="pl-pitch">' + (p.pitch||'') + '</div><div class="pl-desc">' + (p.desc||'') + '</div><div class="fx-tags">' + fxHtml + '</div>' + vidBtn + '</div></div>';
-  }
-  document.getElementById("lu-list").innerHTML = html;
-  var cards = document.getElementById("lu-list").querySelectorAll(".plookup-card");
-  for (var i=0;i<cards.length;i++) {
-    cards[i].addEventListener("click", function() { toggleLookup(parseInt(this.getAttribute("data-idx"))); });
-  }
-}
-
-function toggleLookup(i) {
-  openLookup = openLookup === i ? null : i;
-  renderLookup();
-}
-
-// Wire nav tabs
-var navTabs = document.querySelectorAll(".nav-tab[data-tab]");
-for (var i=0;i<navTabs.length;i++) {
-  navTabs[i].addEventListener("click", function() { showTab(this.getAttribute("data-tab")); });
-}
-// Wire duration chips
-var durChips = document.querySelectorAll(".chip[data-dur]");
-for (var i=0;i<durChips.length;i++) {
-  durChips[i].addEventListener("click", function() { selDuration(this.getAttribute("data-dur")); });
-}
-buildFxChips();
-buildCatFilters();
-renderLookup();
-</script>
-</body>
-</html>
+>
