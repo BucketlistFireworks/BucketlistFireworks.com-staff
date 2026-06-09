@@ -621,5 +621,65 @@ function buildShow() {
 
   document.getElementById("show-results").innerHTML = out;
 }
+// Wire up nav tabs
+var navTabs = document.querySelectorAll('.nav-tab[data-tab]');
+for (var i = 0; i < navTabs.length; i++) {
+  navTabs[i].addEventListener('click', function() {
+    showTab(this.getAttribute('data-tab'));
+  });
+}
 
->
+// Wire up category filter chips in product lookup
+function buildCatChips() {
+  var cats = ['All'];
+  for (var i = 0; i < PRODUCTS.length; i++) {
+    if (cats.indexOf(PRODUCTS[i].cat) < 0) cats.push(PRODUCTS[i].cat);
+  }
+  cats.sort();
+  cats = ['All'].concat(cats.filter(function(c){ return c !== 'All'; }));
+  var html = '';
+  for (var i = 0; i < cats.length; i++) {
+    html += '<div class="chip' + (cats[i] === 'All' ? ' active' : '') + '" data-cat="' + cats[i] + '">' + cats[i] + '</div>';
+  }
+  document.getElementById('cat-filters').innerHTML = html;
+  var chips = document.getElementById('cat-filters').querySelectorAll('.chip');
+  for (var i = 0; i < chips.length; i++) {
+    chips[i].addEventListener('click', function() {
+      activeCat = this.getAttribute('data-cat');
+      var all = document.getElementById('cat-filters').querySelectorAll('.chip');
+      for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
+      this.classList.add('active');
+      renderLookup();
+    });
+  }
+}
+
+function renderLookup() {
+  var q = document.getElementById('lu-search').value.toLowerCase();
+  var list = PRODUCTS.filter(function(p) {
+    if (activeCat !== 'All' && p.cat !== activeCat) return false;
+    if (q && p.name.toLowerCase().indexOf(q) < 0 && p.effects.join(' ').toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+  var out = '';
+  for (var i = 0; i < list.length; i++) {
+    var p = list[i];
+    out += '<div class="result-card" style="margin-bottom:10px">';
+    out += '<div class="rc-top"><span class="rc-name">' + p.name + '</span>';
+    out += '<span style="font-family:Barlow Condensed;font-size:13px;color:var(--gold);white-space:nowrap">' + p.price + '</span></div>';
+    out += '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + p.cat + ' &nbsp;|&nbsp; ' + p.effects.join(', ') + '</div>';
+    if (p.desc) out += '<div style="font-size:12px;color:var(--text3);margin-top:4px">' + p.desc + '</div>';
+    if (p.pitch) out += '<div style="font-size:12px;color:var(--gold);margin-top:4px;font-style:italic">' + p.pitch + '</div>';
+    if (p.video) out += '<a href="' + p.video + '" target="_blank" style="display:inline-block;margin-top:6px;font-size:12px;color:var(--gold)">&#9654; Watch Demo</a>';
+    out += '</div>';
+  }
+  document.getElementById('lu-list').innerHTML = out || '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">No products found.</div>';
+}
+
+// Init
+buildCatChips();
+renderLookup();
+
+</script>
+</body>
+</html>
