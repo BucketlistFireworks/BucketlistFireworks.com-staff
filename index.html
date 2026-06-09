@@ -94,6 +94,130 @@ input[type=range]{width:100%;accent-color:var(--red);margin-bottom:4px;cursor:po
 .cheat-def{font-size:11px;color:var(--text2);line-height:1.5;flex:1}
 .cheat-section{margin-bottom:16px}
 </style>
+
+<script>
+var selSaturn = 'no';
+var selNoise = 'any';
+var selColor = 'any';
+var selShape = 'any';
+var selPattern = 'any';
+var selSize = 'any';
+
+function setShape(val) {
+  selShape = val;
+  ['any','peony','willow','crackle','strobe','mine'].forEach(function(v) {
+    document.getElementById('shape-' + v).classList.toggle('active', v === val);
+  });
+}
+
+function setPattern(val) {
+  selPattern = val;
+  ['any','straight','fan'].forEach(function(v) {
+    document.getElementById('pattern-' + v).classList.toggle('active', v === val);
+  });
+}
+
+function setSize(val) {
+  selSize = val;
+  ['any','small','medium','large'].forEach(function(v) {
+    document.getElementById('size-' + v).classList.toggle('active', v === val);
+  });
+}
+
+function setSaturn(val) {
+  selSaturn = val;
+  document.getElementById('saturn-no').classList.toggle('active', val === 'no');
+  document.getElementById('saturn-yes').classList.toggle('active', val === 'yes');
+}
+
+function setNoise(val) {
+  selNoise = val;
+  ['any','quiet','moderate','loud'].forEach(function(v) {
+    document.getElementById('noise-' + v).classList.toggle('active', v === val);
+  });
+}
+
+function setColor(val) {
+  selColor = val;
+  ['any','patriotic','colorful','gold','neon'].forEach(function(v) {
+    document.getElementById('color-' + v).classList.toggle('active', v === val);
+  });
+}
+
+function syncMix(changed) {
+  var cake   = parseInt(document.getElementById('mix-cake').value, 10);
+  var tube   = parseInt(document.getElementById('mix-tube').value, 10);
+  var reload = parseInt(document.getElementById('mix-reload').value, 10);
+  var total = cake + tube + reload;
+  document.getElementById('lbl-cake').textContent   = cake   + '%';
+  document.getElementById('lbl-tube').textContent   = tube   + '%';
+  document.getElementById('lbl-reload').textContent = reload + '%';
+  var badge = document.getElementById('mix-total-badge');
+  if (total === 100) {
+    badge.textContent = '100% ✓';
+    badge.style.color = 'var(--green)';
+    document.getElementById('mix-warning').style.display = 'none';
+  } else {
+    badge.textContent = total + '% (must = 100%)';
+    badge.style.color = '#e8251c';
+  }
+}
+var openLookup = null;
+var activeCat = "All";
+var SHOW_BUILDER_CATS = ["500g Cake","Multi-Tube","Reloadable","Fountain"];
+
+function showTab(id) {
+  var screens = document.querySelectorAll(".screen");
+  for (var i = 0; i < screens.length; i++) screens[i].classList.remove("active");
+  var tabs = document.querySelectorAll(".nav-tab[data-tab]");
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove("active");
+  document.getElementById("screen-" + id).classList.add("active");
+  document.getElementById("tab-" + id).classList.add("active");
+  if (id === "lookup") renderLookup();
+}
+
+function buildFxChips() {
+  var fxSet = {};
+  for (var i = 0; i < PRODUCTS.length; i++) {
+    var p = PRODUCTS[i];
+    if (SHOW_BUILDER_CATS.indexOf(p.cat) === -1) continue;
+    for (var j = 0; j < p.effects.length; j++) fxSet[p.effects[j]] = true;
+  }
+  var fxList = Object.keys(fxSet).sort();
+  var html = "";
+  for (var i = 0; i < fxList.length; i++) {
+    html += '<div class="chip" data-fx="' + fxList[i].replace(/"/g,"&quot;") + '">' + fxList[i] + '</div>';
+  }
+  document.getElementById("fx-chips").innerHTML = html;
+  var chips = document.getElementById("fx-chips").querySelectorAll(".chip");
+  for (var i=0;i<chips.length;i++) {
+    chips[i].addEventListener("click", function() { toggleFx(this, this.getAttribute("data-fx")); });
+  }
+}
+
+function toggleFx(el, f) {
+  var idx = selFx.indexOf(f);
+  if (idx >= 0) { selFx.splice(idx, 1); el.classList.remove("sel-fx"); }
+  else { selFx.push(f); el.classList.add("sel-fx"); }
+}
+
+function selDuration(val) {
+  selDur = (selDur === val) ? null : val;
+  var ids = ["dur-short","dur-medium","dur-long"];
+  var vals = ["short","medium","long"];
+  for (var i = 0; i < ids.length; i++) {
+    var el = document.getElementById(ids[i]);
+    if (vals[i] === selDur) el.classList.add("sel-dur");
+    else el.classList.remove("sel-dur");
+  }
+}
+
+function priceNum(p) {
+  if (!p.price) return 0;
+  var m = p.price.match(/\$(\d+\.\d+)/);
+  return m ? parseFloat(m[1]) : 0;
+}
+</script>
 </head>
 <body>
 <div id="app">
@@ -416,127 +540,6 @@ var PRODUCTS = [
 
 var selFx = [];
 var selDur = null;
-var selSaturn = 'no';
-var selNoise = 'any';
-var selColor = 'any';
-var selShape = 'any';
-var selPattern = 'any';
-var selSize = 'any';
-
-function setShape(val) {
-  selShape = val;
-  ['any','peony','willow','crackle','strobe','mine'].forEach(function(v) {
-    document.getElementById('shape-' + v).classList.toggle('active', v === val);
-  });
-}
-
-function setPattern(val) {
-  selPattern = val;
-  ['any','straight','fan'].forEach(function(v) {
-    document.getElementById('pattern-' + v).classList.toggle('active', v === val);
-  });
-}
-
-function setSize(val) {
-  selSize = val;
-  ['any','small','medium','large'].forEach(function(v) {
-    document.getElementById('size-' + v).classList.toggle('active', v === val);
-  });
-}
-
-function setSaturn(val) {
-  selSaturn = val;
-  document.getElementById('saturn-no').classList.toggle('active', val === 'no');
-  document.getElementById('saturn-yes').classList.toggle('active', val === 'yes');
-}
-
-function setNoise(val) {
-  selNoise = val;
-  ['any','quiet','moderate','loud'].forEach(function(v) {
-    document.getElementById('noise-' + v).classList.toggle('active', v === val);
-  });
-}
-
-function setColor(val) {
-  selColor = val;
-  ['any','patriotic','colorful','gold','neon'].forEach(function(v) {
-    document.getElementById('color-' + v).classList.toggle('active', v === val);
-  });
-}
-
-function syncMix(changed) {
-  var cake   = parseInt(document.getElementById('mix-cake').value, 10);
-  var tube   = parseInt(document.getElementById('mix-tube').value, 10);
-  var reload = parseInt(document.getElementById('mix-reload').value, 10);
-  var total = cake + tube + reload;
-  document.getElementById('lbl-cake').textContent   = cake   + '%';
-  document.getElementById('lbl-tube').textContent   = tube   + '%';
-  document.getElementById('lbl-reload').textContent = reload + '%';
-  var badge = document.getElementById('mix-total-badge');
-  if (total === 100) {
-    badge.textContent = '100% ✓';
-    badge.style.color = 'var(--green)';
-    document.getElementById('mix-warning').style.display = 'none';
-  } else {
-    badge.textContent = total + '% (must = 100%)';
-    badge.style.color = '#e8251c';
-  }
-}
-var openLookup = null;
-var activeCat = "All";
-var SHOW_BUILDER_CATS = ["500g Cake","Multi-Tube","Reloadable","Fountain"];
-
-function showTab(id) {
-  var screens = document.querySelectorAll(".screen");
-  for (var i = 0; i < screens.length; i++) screens[i].classList.remove("active");
-  var tabs = document.querySelectorAll(".nav-tab[data-tab]");
-  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove("active");
-  document.getElementById("screen-" + id).classList.add("active");
-  document.getElementById("tab-" + id).classList.add("active");
-  if (id === "lookup") renderLookup();
-}
-
-function buildFxChips() {
-  var fxSet = {};
-  for (var i = 0; i < PRODUCTS.length; i++) {
-    var p = PRODUCTS[i];
-    if (SHOW_BUILDER_CATS.indexOf(p.cat) === -1) continue;
-    for (var j = 0; j < p.effects.length; j++) fxSet[p.effects[j]] = true;
-  }
-  var fxList = Object.keys(fxSet).sort();
-  var html = "";
-  for (var i = 0; i < fxList.length; i++) {
-    html += '<div class="chip" data-fx="' + fxList[i].replace(/"/g,"&quot;") + '">' + fxList[i] + '</div>';
-  }
-  document.getElementById("fx-chips").innerHTML = html;
-  var chips = document.getElementById("fx-chips").querySelectorAll(".chip");
-  for (var i=0;i<chips.length;i++) {
-    chips[i].addEventListener("click", function() { toggleFx(this, this.getAttribute("data-fx")); });
-  }
-}
-
-function toggleFx(el, f) {
-  var idx = selFx.indexOf(f);
-  if (idx >= 0) { selFx.splice(idx, 1); el.classList.remove("sel-fx"); }
-  else { selFx.push(f); el.classList.add("sel-fx"); }
-}
-
-function selDuration(val) {
-  selDur = (selDur === val) ? null : val;
-  var ids = ["dur-short","dur-medium","dur-long"];
-  var vals = ["short","medium","long"];
-  for (var i = 0; i < ids.length; i++) {
-    var el = document.getElementById(ids[i]);
-    if (vals[i] === selDur) el.classList.add("sel-dur");
-    else el.classList.remove("sel-dur");
-  }
-}
-
-function priceNum(p) {
-  if (!p.price) return 0;
-  var m = p.price.match(/\$(\d+\.\d+)/);
-  return m ? parseFloat(m[1]) : 0;
-}
 
 function buildShow() {
   var budget = parseInt(document.getElementById("bud-slider").value, 10);
