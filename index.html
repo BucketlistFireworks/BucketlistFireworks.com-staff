@@ -484,9 +484,6 @@ async function submitRequest(){
     toast('Request submitted!','ok');clearSubmitForm();if(user.role==='dept')showTab('my-requests');
   }catch(e){toast('Error submitting. Try again.','err');}
   finally{if(btn){btn.disabled=false;btn.textContent='Submit Request';}}
-  try{await post('delivery_requests',body);toast('Request submitted!','ok');clearSubmitForm();if(user.role==='dept')showTab('my-requests');}
-  catch(e){toast('Error submitting. Try again.','err');}
-  finally{if(btn){btn.disabled=false;btn.textContent='Submit Request';}}
 }
 
 async function renderMyRequests(){
@@ -679,7 +676,6 @@ async function saveAssign(){
     closeModal('assign-modal');toast('Assignment saved!','ok');renderBoard();
   }catch(e){toast('Error saving. Try again.','err');}
   finally{if(btn){btn.disabled=false;btn.textContent='Save';}}
-}
 }
 
 async function viewRequest(id){
