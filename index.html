@@ -88,7 +88,7 @@ input[type=range]{width:100%;accent-color:var(--red);margin-bottom:4px;cursor:po
 .pl-pitch{font-size:12px;color:var(--text2);line-height:1.5;background:var(--bg3);border-left:3px solid var(--gold);padding:7px 9px;border-radius:0 6px 6px 0;margin-bottom:8px;font-style:italic}
 .pl-desc{font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:6px}
 .no-results{font-size:13px;color:var(--text3);text-align:center;padding:32px 0}
-.cheat-hdr{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:#fff;background:var(--green;padding:6px 12px;border-radius:6px;margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase}
+.cheat-hdr{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:#fff;background:var(--green)padding:6px 12px;border-radius:6px;margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase}
 .cheat-row{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border)}
 .cheat-term{font-size:11px;font-weight:700;color:var(--text);min-width:90px;line-height:1.4;padding-top:1px}
 .cheat-def{font-size:11px;color:var(--text2);line-height:1.5;flex:1}
@@ -643,4 +643,114 @@ function buildShow() {
   document.getElementById("show-results").innerHTML = html;
 }
 
->
+/* ===== RESTORED: Product Lookup tab ===== */
+function lookupCats() {
+  var seen = {}, cats = ["All"];
+  for (var i = 0; i < PRODUCTS.length; i++) {
+    var c = PRODUCTS[i].cat;
+    if (c && !seen[c]) { seen[c] = true; cats.push(c); }
+  }
+  return cats;
+}
+
+function buildCatFilters() {
+  var cats = lookupCats();
+  var wrap = document.getElementById("cat-filters");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  for (var i = 0; i < cats.length; i++) {
+    var chip = document.createElement("div");
+    chip.className = "filter-chip" + (cats[i] === activeCat ? " active" : "");
+    chip.textContent = cats[i];
+    chip.setAttribute("data-cat", cats[i]);
+    chip.addEventListener("click", function() { setCat(this.getAttribute("data-cat")); });
+    wrap.appendChild(chip);
+  }
+}
+
+function setCat(cat) {
+  activeCat = cat;
+  var chips = document.querySelectorAll("#cat-filters .filter-chip");
+  for (var i = 0; i < chips.length; i++) {
+    chips[i].classList.toggle("active", chips[i].getAttribute("data-cat") === cat);
+  }
+  renderLookup();
+}
+
+function toggleLookup(idx) {
+  openLookup = (openLookup === idx) ? null : idx;
+  renderLookup();
+}
+
+function renderLookup() {
+  var listEl = document.getElementById("lu-list");
+  if (!listEl) return;
+  var qEl = document.getElementById("lu-search");
+  var q = qEl ? qEl.value.trim().toLowerCase() : "";
+
+  var matches = [];
+  for (var i = 0; i < PRODUCTS.length; i++) {
+    var p = PRODUCTS[i];
+    if (activeCat !== "All" && p.cat !== activeCat) continue;
+    if (q) {
+      var hay = (p.name + " " + p.cat + " " + p.effects.join(" ")).toLowerCase();
+      if (hay.indexOf(q) === -1) continue;
+    }
+    matches.push(i);
+  }
+
+  if (!matches.length) {
+    listEl.innerHTML = "<div class='no-results'>No products match. Try a different search or category.</div>";
+    return;
+  }
+
+  var html = "";
+  for (var m = 0; m < matches.length; m++) {
+    var i = matches[m];
+    var p = PRODUCTS[i];
+    var isOpen = (openLookup === i);
+    html += "<div class='plookup-card" + (isOpen ? " open" : "") + "' data-idx='" + i + "'>";
+    html += "<div class='pl-top'><div><div class='pl-name'>" + p.name + "</div><div class='pl-cat'>" + p.cat + "</div></div>";
+    if (p.price) html += "<div class='pl-price'>" + p.price + "</div>";
+    html += "</div>";
+    // detail (revealed when open)
+    html += "<div class='pl-detail'>";
+    if (p.pitch) html += "<div class='pl-pitch'>" + p.pitch + "</div>";
+    if (p.desc)  html += "<div class='pl-desc'>" + p.desc + "</div>";
+    if (p.effects && p.effects.length) {
+      html += "<div style='display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px'>";
+      for (var e = 0; e < p.effects.length; e++) html += "<span class='fx-tag'>" + p.effects[e] + "</span>";
+      html += "</div>";
+    }
+    if (p.video) html += "<a href='" + p.video + "' target='_blank' style='display:inline-block;font-size:12px;color:var(--gold)'>\u25B6 Watch Demo</a>";
+    html += "</div></div>";
+  }
+  listEl.innerHTML = html;
+
+  var cards = listEl.querySelectorAll(".plookup-card");
+  for (var c = 0; c < cards.length; c++) {
+    cards[c].addEventListener("click", function() {
+      toggleLookup(parseInt(this.getAttribute("data-idx"), 10));
+    });
+  }
+}
+
+/* ===== RESTORED: wire up the nav tabs + first paint ===== */
+function initApp() {
+  var tabs = document.querySelectorAll(".nav-tab[data-tab]");
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].addEventListener("click", function() {
+      showTab(this.getAttribute("data-tab"));
+    });
+  }
+  buildCatFilters();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initApp);
+} else {
+  initApp();
+}
+</script>
+</body>
+</html>
